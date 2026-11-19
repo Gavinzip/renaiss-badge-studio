@@ -1,0 +1,22 @@
+# This repository contains the badge studio. Other local projects and media
+# share this checkout but are intentionally outside the repository.
+/*
+!/.gitignore
+!/README.md
+!/package.json
+!/package-lock.json
+!/vite.config.js
+!/.github/
+!/app/
+/app/*
+!/app/badges/
+!/app/src/
+/app/src/*
+!/app/src/badges/
+
+**/node_modules/
+**/.env
+**/.env.*
+**/.vercel/
+**/.DS_Store
+**/*.log

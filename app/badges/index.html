@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0d12" />
+    <title>徽章工作室 · Renaiss</title>
+    <script>document.documentElement.dataset.mode = location.hash === '#showcase' ? 'showcase' : 'editor';</script>
+    <link rel="stylesheet" href="/src/badges/styles.css" />
+  </head>
+  <body>
+    <main class="badge-wall" data-mode="editor" aria-label="徽章工作室">
+      <header class="studio-header">
+        <a class="studio-brand" href="/" aria-label="返回 Renaiss 全息展示">Renaiss<span>徽章工作室</span></a>
+        <div class="studio-header-actions">
+          <span id="save-status" class="save-status" role="status">正在載入</span>
+          <button id="retry-save" class="text-button" type="button" hidden>重新儲存</button>
+          <button id="enter-showcase" class="primary-button" type="button" disabled>進入展示 <span aria-hidden="true">↗</span></button>
+        </div>
+      </header>
+
+      <aside class="studio-panel" aria-label="徽章設定">
+        <section class="panel-section">
+          <div class="section-heading"><h1>收藏圖案</h1><span id="image-count" class="count"></span></div>
+          <div id="badge-images" class="badge-images" aria-label="選擇要調整的圖案"></div>
+          <button id="import-collection" class="import-button" type="button" disabled><span aria-hidden="true">＋</span> 匯入整組圖片</button>
+          <p class="field-help">PNG、JPG、WebP、SVG · 最多 24 張</p>
+        </section>
+
+        <section class="panel-section" aria-labelledby="metal-heading">
+          <div class="section-heading"><h2 id="metal-heading">金屬材質</h2></div>
+          <fieldset class="metal-modes">
+            <legend class="sr-only">金屬配色模式</legend>
+            <label><input type="radio" name="metal-mode" value="gold" /><span><i class="metal-dot gold"></i>統一金色</span></label>
+            <label><input type="radio" name="metal-mode" value="silver" /><span><i class="metal-dot silver"></i>統一銀色</span></label>
+            <label><input type="radio" name="metal-mode" value="custom" checked /><span><i class="metal-dot custom"></i>逐一自訂</span></label>
+          </fieldset>
+          <div class="selected-artwork">
+            <img id="selected-image" alt="" width="52" height="52" />
+            <div><strong id="selected-name">正在準備圖案</strong><button id="replace-image" class="text-button" type="button" disabled>替換這張圖片</button></div>
+          </div>
+          <div id="custom-metal" class="custom-metal">
+            <label for="metal-color">這個 Logo 的金屬顏色</label>
+            <div class="color-row">
+              <label class="color-picker" title="選擇金屬顏色"><input id="metal-color" type="color" value="#e6ac6e" /><span id="metal-hex">#E6AC6E</span></label>
+              <div class="color-presets" aria-label="金屬色票">
+                <button type="button" data-metal="#e5b66f" aria-label="這個圖案使用金色" style="--swatch:#e5b66f"></button>
+                <button type="button" data-metal="#cbd3df" aria-label="這個圖案使用銀色" style="--swatch:#cbd3df"></button>
+                <button type="button" data-metal="#e6ac6e" aria-label="這個圖案使用銅金色" style="--swatch:#e6ac6e"></button>
+              </div>
+            </div>
+          </div>
+          <label class="toggle-row"><span>保留圖片原色<small>關閉後整枚使用金屬配色</small></span><input id="preserve-artwork" type="checkbox" checked role="switch" /></label>
+          <label class="slider-label" for="roughness"><span>表面光澤</span><output id="roughness-value"></output></label>
+          <input id="roughness" type="range" min="12" max="45" step="1" value="20" />
+          <label class="toggle-row"><span>淺浮雕圖案<small>依明暗與色塊，讓內部圖案微微凸起</small></span><input id="relief-enabled" type="checkbox" role="switch" /></label>
+          <div id="relief-controls" hidden>
+            <label class="slider-label" for="relief-height"><span>浮雕高度</span><output id="relief-value"></output></label>
+            <input id="relief-height" type="range" min="4" max="30" step="1" value="8" />
+          </div>
+        </section>
+
+        <section class="panel-section" aria-labelledby="motion-heading">
+          <h2 id="motion-heading">手勢手感</h2>
+          <label class="slider-label" for="glide-duration"><span>單指慣性滑行</span><output id="glide-value"></output></label>
+          <input id="glide-duration" type="range" min="0" max="3.5" step="0.1" value="2.2" />
+          <p class="field-help">依放手前的速度滑行，逐漸減速</p>
+          <label class="slider-label" for="rotation-sensitivity"><span>雙指旋轉靈敏度</span><output id="rotation-value"></output></label>
+          <input id="rotation-sensitivity" type="range" min="15" max="120" step="5" value="60" />
+          <p class="field-help">每滑動 100 px 的旋轉角度，放手即停</p>
+        </section>
+        <footer class="panel-footer"><button id="restore" class="text-button" type="button" disabled>恢復 Renaiss 圖案</button><span>圖片與設定僅存於本機瀏覽器</span></footer>
+      </aside>
+
+      <section class="preview-panel" aria-label="徽章即時預覽">
+        <div class="badge-stage" id="badge-stage" aria-hidden="true"></div>
+        <div class="preview-toolbar">
+          <div><span class="live-dot" aria-hidden="true"></span>即時預覽</div>
+          <nav aria-label="預覽控制">
+            <button id="turn-wall" type="button" disabled>轉動</button>
+            <button id="flip-wall" type="button" disabled>翻面</button>
+            <button id="replay" type="button" disabled>重播進場</button>
+          </nav>
+        </div>
+        <div class="preview-hints"><span>單指／滑鼠拖曳移動</span><span>雙指滑動旋轉</span><span>點徽章選取圖案</span></div>
+        <p id="badge-status" class="badge-status" role="status">正在準備徽章…</p>
+      </section>
+
+      <div class="showcase-return-zone">
+        <a id="leave-showcase" href="#editor" aria-label="返回編輯">← 返回編輯</a>
+      </div>
+      <input id="import-files" type="file" accept=".png,.jpg,.jpeg,.webp,.svg" multiple hidden />
+      <input id="replace-file" type="file" accept=".png,.jpg,.jpeg,.webp,.svg" hidden />
+    </main>
+    <script type="module" src="/src/badges/main.js"></script>
+  </body>
+</html>
