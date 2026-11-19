@@ -60,22 +60,19 @@ export function createFrontSurface(shapes, width, height, frontZ, analysis) {
   const features = new Float32Array(position.count);
   const gradientX = new Float32Array(position.count);
   const gradientY = new Float32Array(position.count);
-  const stepX = width / (analysis.width - 2), stepY = height / (analysis.height - 2);
-  const slope = -2 * crownHeight * crownCurvature;
+  const at = createSurfaceSampler(analysis, width, height);
 
   for (let index = 0; index < position.count; index++) {
     const u = .5 + position.getX(index) / width;
     const v = .5 + position.getY(index) / height;
     uv.setXY(index, u, v);
-    const x = 1 + u * (analysis.width - 2), y = 1 + (1 - v) * (analysis.height - 2);
-    crowns[index] = frontCrown(position.getX(index), position.getY(index), width, height);
-    baseSlopeX[index] = slope * position.getX(index) / (width * width);
-    baseSlopeY[index] = slope * position.getY(index) / (height * height);
-    features[index] = sample(analysis.features, analysis.width, analysis.height, x, y);
-    gradientX[index] = (sample(analysis.features, analysis.width, analysis.height, x + 1, y)
-      - sample(analysis.features, analysis.width, analysis.height, x - 1, y)) / (2 * stepX);
-    gradientY[index] = (sample(analysis.features, analysis.width, analysis.height, x, y - 1)
-      - sample(analysis.features, analysis.width, analysis.height, x, y + 1)) / (2 * stepY);
+    const point = at(position.getX(index), position.getY(index));
+    crowns[index] = point.crown;
+    baseSlopeX[index] = point.slopeX;
+    baseSlopeY[index] = point.slopeY;
+    features[index] = point.feature;
+    gradientX[index] = point.gradientX;
+    gradientY[index] = point.gradientY;
   }
   let currentHeight, currentCurvature;
   function setHeight(reliefHeight, curvature = 1) {
@@ -100,6 +97,25 @@ export function createFrontSurface(shapes, width, height, frontZ, analysis) {
 
 export function frontCrown(x, y, width, height) {
   return crownHeight * (1 - crownCurvature * ((x / width) ** 2 + (y / height) ** 2));
+}
+
+// The face and its metal inlay must sample the same height field so neither
+// floats above, nor sinks into, the artwork when relief or curvature changes.
+export function createSurfaceSampler(analysis, width, height) {
+  const stepX = width / (analysis.width - 2), stepY = height / (analysis.height - 2);
+  const slope = -2 * crownHeight * crownCurvature;
+  const feature = (x, y) => sample(analysis.features, analysis.width, analysis.height, x, y);
+  return (x, y) => {
+    const u = 1 + (.5 + x / width) * (analysis.width - 2);
+    const v = 1 + (.5 - y / height) * (analysis.height - 2);
+    return {
+      crown: frontCrown(x, y, width, height),
+      slopeX: slope * x / (width * width), slopeY: slope * y / (height * height),
+      feature: feature(u, v),
+      gradientX: (feature(u + 1, v) - feature(u - 1, v)) / (2 * stepX),
+      gradientY: (feature(u, v - 1) - feature(u, v + 1)) / (2 * stepY),
+    };
+  };
 }
 
 function sample(values, width, height, x, y) {

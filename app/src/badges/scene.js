@@ -34,8 +34,11 @@ export function createBadgeScene(host, { select, graphicsError, settings: initia
   const projected = new Vector3();
   const rotation = { x: 0, y: 0, speedX: 0, speedY: 0, yaw: 0, pitch: 0, held: false, updatedAt: 0 };
   const face = { yaw: 0, pitch: 0 };
-  const initialCurvature = settings.curvedSurface ? 1 : 0;
-  const curvature = { value: initialCurvature, from: initialCurvature, target: initialCurvature, started: 0 };
+  const profiles = [
+    { key: 'curvedSurface', apply: (model, value) => model.setCurvature(value) },
+    { key: 'metalTrim', apply: (model, value) => model.setMetalTrim(value) },
+  ].map(profile => ({ ...profile, value: settings[profile.key] ? 1 : 0,
+    from: settings[profile.key] ? 1 : 0, target: settings[profile.key] ? 1 : 0, started: 0 }));
   let models = [], sources = [], layout, outline;
   let started = 0, previousFrame = 0, contextLost = false;
   let activeUntil = 0, needsPaint = true;
@@ -56,14 +59,15 @@ export function createBadgeScene(host, { select, graphicsError, settings: initia
     const delta = previousFrame ? Math.min(.05, time - previousFrame) : 1 / 60;
     previousFrame = time;
     const moving = (!rotation.held && Boolean(rotation.speedX || rotation.speedY))
-      || Math.hypot(rotation.yaw, rotation.pitch) > .001 || curvature.value !== curvature.target;
+      || Math.hypot(rotation.yaw, rotation.pitch) > .001 || profiles.some(profile => profile.value !== profile.target);
     if (document.hidden || contextLost || !models.length || !layout || (!needsPaint && !moving && time > activeUntil)) return;
     advanceWall(rotation, time, delta, reduced.matches, settings.glideDuration);
-    if (curvature.value !== curvature.target) {
-      const progress = reduced.matches ? 1 : Math.max(0, Math.min(1, (time - curvature.started) / .24));
-      curvature.value = progress === 1 ? curvature.target
-        : curvature.from + (curvature.target - curvature.from) * (1 - (1 - progress) ** 3);
-      models.forEach(model => model.setCurvature(curvature.value));
+    for (const profile of profiles) {
+      if (profile.value === profile.target) continue;
+      const progress = reduced.matches ? 1 : Math.max(0, Math.min(1, (time - profile.started) / .24));
+      profile.value = progress === 1 ? profile.target
+        : profile.from + (profile.target - profile.from) * (1 - (1 - progress) ** 3);
+      models.forEach(model => profile.apply(model, profile.value));
     }
     const intro = reduced.matches ? introTiming.end : time - started;
     const introBeforeWall = intro < introTiming.controls;
@@ -236,17 +240,18 @@ export function createBadgeScene(host, { select, graphicsError, settings: initia
   function updateAppearance(nextSettings = settings, nextSources = sources) {
     settings = nextSettings;
     sources = nextSources;
-    const nextCurvature = settings.curvedSurface ? 1 : 0;
-    if (nextCurvature !== curvature.target) {
-      curvature.from = curvature.value;
-      curvature.target = nextCurvature;
-      curvature.started = performance.now() / 1000;
-      activeUntil = Math.max(activeUntil, curvature.started + (reduced.matches ? 0 : .24));
+    for (const profile of profiles) {
+      const next = settings[profile.key] ? 1 : 0;
+      if (next === profile.target) continue;
+      profile.from = profile.value;
+      profile.target = next;
+      profile.started = performance.now() / 1000;
+      activeUntil = Math.max(activeUntil, profile.started + (reduced.matches ? 0 : .24));
     }
     models.forEach((model, index) => {
       model.setAppearance(displayMetal(settings, sources[index], index), settings.roughness,
         settings.preserveArtwork, settings.reliefEnabled, settings.reliefHeight);
-      model.setCurvature(curvature.value);
+      profiles.forEach(profile => profile.apply(model, profile.value));
     });
     needsPaint = true;
   }
