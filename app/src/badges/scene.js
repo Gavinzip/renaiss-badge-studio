@@ -1,5 +1,5 @@
 import {
-  NeutralToneMapping, Object3D, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
+  ACESFilmicToneMapping, Object3D, PerspectiveCamera, Scene, Vector3, WebGLRenderer,
 } from 'three';
 import { createBadgeReflections, lightBadgeArtwork } from './lighting.js';
 import { createBadgeModel, createBadgeOutline } from './models.js';
@@ -13,8 +13,8 @@ export function createBadgeScene(host, { select, graphicsError, settings: initia
   const context = gl.getContext('webgl2', { antialias: true, alpha: true });
   if (!context) throw new Error('此瀏覽器或裝置無法使用 WebGL 2。');
   const renderer = new WebGLRenderer({ canvas: gl, context, antialias: true, alpha: true });
-  renderer.toneMapping = NeutralToneMapping;
-  renderer.toneMappingExposure = .8;
+  renderer.toneMapping = ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
   renderer.setClearColor(0, 0);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
 
@@ -26,7 +26,7 @@ export function createBadgeScene(host, { select, graphicsError, settings: initia
   lightBadgeArtwork(scene);
   let environment = createBadgeReflections(renderer);
   scene.environment = environment.texture;
-  scene.environmentIntensity = 1.07;
+  scene.environmentIntensity = .9;
   host.append(gl);
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -34,6 +34,8 @@ export function createBadgeScene(host, { select, graphicsError, settings: initia
   const projected = new Vector3();
   const rotation = { x: 0, y: 0, speedX: 0, speedY: 0, yaw: 0, pitch: 0, held: false, updatedAt: 0 };
   const face = { yaw: 0, pitch: 0 };
+  const initialCurvature = settings.curvedSurface ? 1 : 0;
+  const curvature = { value: initialCurvature, from: initialCurvature, target: initialCurvature, started: 0 };
   let models = [], sources = [], layout, outline;
   let started = 0, previousFrame = 0, contextLost = false;
   let activeUntil = 0, needsPaint = true;
@@ -54,9 +56,15 @@ export function createBadgeScene(host, { select, graphicsError, settings: initia
     const delta = previousFrame ? Math.min(.05, time - previousFrame) : 1 / 60;
     previousFrame = time;
     const moving = (!rotation.held && Boolean(rotation.speedX || rotation.speedY))
-      || Math.hypot(rotation.yaw, rotation.pitch) > .001;
+      || Math.hypot(rotation.yaw, rotation.pitch) > .001 || curvature.value !== curvature.target;
     if (document.hidden || contextLost || !models.length || !layout || (!needsPaint && !moving && time > activeUntil)) return;
     advanceWall(rotation, time, delta, reduced.matches, settings.glideDuration);
+    if (curvature.value !== curvature.target) {
+      const progress = reduced.matches ? 1 : Math.max(0, Math.min(1, (time - curvature.started) / .24));
+      curvature.value = progress === 1 ? curvature.target
+        : curvature.from + (curvature.target - curvature.from) * (1 - (1 - progress) ** 3);
+      models.forEach(model => model.setCurvature(curvature.value));
+    }
     const intro = reduced.matches ? introTiming.end : time - started;
     const introBeforeWall = intro < introTiming.controls;
     if (introBeforeWall !== playingIntro) {
@@ -228,9 +236,17 @@ export function createBadgeScene(host, { select, graphicsError, settings: initia
   function updateAppearance(nextSettings = settings, nextSources = sources) {
     settings = nextSettings;
     sources = nextSources;
+    const nextCurvature = settings.curvedSurface ? 1 : 0;
+    if (nextCurvature !== curvature.target) {
+      curvature.from = curvature.value;
+      curvature.target = nextCurvature;
+      curvature.started = performance.now() / 1000;
+      activeUntil = Math.max(activeUntil, curvature.started + (reduced.matches ? 0 : .24));
+    }
     models.forEach((model, index) => {
       model.setAppearance(displayMetal(settings, sources[index], index), settings.roughness,
         settings.preserveArtwork, settings.reliefEnabled, settings.reliefHeight);
+      model.setCurvature(curvature.value);
     });
     needsPaint = true;
   }

@@ -3,7 +3,7 @@ import { TessellateModifier } from 'three/addons/modifiers/TessellateModifier.js
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const resolution = 160;
-const crownHeight = .048;
+const crownHeight = .095;
 const crownCurvature = 1.35;
 
 export function analyzeRelief(image) {
@@ -55,10 +55,13 @@ export function createFrontSurface(shapes, width, height, frontZ, analysis) {
   detailed.dispose();
   const { position, normal, uv } = geometry.attributes;
   const crowns = new Float32Array(position.count);
+  const baseSlopeX = new Float32Array(position.count);
+  const baseSlopeY = new Float32Array(position.count);
   const features = new Float32Array(position.count);
   const gradientX = new Float32Array(position.count);
   const gradientY = new Float32Array(position.count);
   const stepX = width / (analysis.width - 2), stepY = height / (analysis.height - 2);
+  const slope = -2 * crownHeight * crownCurvature;
 
   for (let index = 0; index < position.count; index++) {
     const u = .5 + position.getX(index) / width;
@@ -66,21 +69,23 @@ export function createFrontSurface(shapes, width, height, frontZ, analysis) {
     uv.setXY(index, u, v);
     const x = 1 + u * (analysis.width - 2), y = 1 + (1 - v) * (analysis.height - 2);
     crowns[index] = frontCrown(position.getX(index), position.getY(index), width, height);
+    baseSlopeX[index] = slope * position.getX(index) / (width * width);
+    baseSlopeY[index] = slope * position.getY(index) / (height * height);
     features[index] = sample(analysis.features, analysis.width, analysis.height, x, y);
     gradientX[index] = (sample(analysis.features, analysis.width, analysis.height, x + 1, y)
       - sample(analysis.features, analysis.width, analysis.height, x - 1, y)) / (2 * stepX);
     gradientY[index] = (sample(analysis.features, analysis.width, analysis.height, x, y - 1)
       - sample(analysis.features, analysis.width, analysis.height, x, y + 1)) / (2 * stepY);
   }
-  let currentHeight;
-  function setHeight(reliefHeight) {
-    if (reliefHeight === currentHeight) return;
+  let currentHeight, currentCurvature;
+  function setHeight(reliefHeight, curvature = 1) {
+    if (reliefHeight === currentHeight && curvature === currentCurvature) return;
     currentHeight = reliefHeight;
+    currentCurvature = curvature;
     for (let index = 0; index < position.count; index++) {
-      position.setZ(index, frontZ + .0004 + crowns[index] + features[index] * reliefHeight);
-      const slope = -2 * crownHeight * crownCurvature;
-      const dx = slope * position.getX(index) / (width * width) + gradientX[index] * reliefHeight;
-      const dy = slope * position.getY(index) / (height * height) + gradientY[index] * reliefHeight;
+      position.setZ(index, frontZ + .0004 + crowns[index] * curvature + features[index] * reliefHeight);
+      const dx = baseSlopeX[index] * curvature + gradientX[index] * reliefHeight;
+      const dy = baseSlopeY[index] * curvature + gradientY[index] * reliefHeight;
       const length = Math.hypot(dx, dy, 1);
       normal.setXYZ(index, -dx / length, -dy / length, 1 / length);
     }

@@ -18,7 +18,13 @@ npm run build
 npm run preview
 ```
 
-正式建置輸出位於 `dist/`，可部署至支援靜態網站的服務。此 repo 未綁定部署服務。
+正式建置輸出位於 `dist/`，可部署至支援靜態網站的服務。
+
+## Vercel 部署
+
+將此 GitHub repository 匯入 Vercel，使用 repository 根目錄，Node.js 選擇 24.x。`vercel.json` 已指定 Vite、`npm ci`、`npm run build` 與 `dist` 輸出目錄。
+
+正式部署分支使用 `main`。根網址會導向 `/badges/`；HTML 每次重新驗證，帶內容雜湊的 JS、CSS 與圖片使用一年 immutable 快取。部署後需核對實際功能、壓縮與回應標頭。
 
 ## 操作
 
@@ -26,6 +32,7 @@ npm run preview
 - 雙指拖曳或觸控板捲動：按位移比例旋轉徽章，放手保留當前角度。
 - 「轉動」、「翻面」、「重播進場」：控制整面徽章牆。
 - 統一金色、統一銀色或逐一自訂金屬顏色，可切換保留圖片原色。
+- 「弧面造型」：切換微弧面與平直表面，預設開啟；與淺浮雕可分別開關，並記住本機設定。
 - 「淺浮雕圖案」：根據明暗及色塊產生微凸的表面幾何，可調整高度；此功能是簡單影像分析，不是語意辨識或精密 3D 重建。
 - 支援 PNG、JPG、WebP 與 SVG，單張替換或整組匯入，每組最多 24 張。
 - 「進入展示」：隱藏編輯介面；滑鼠移至左上角、觸控左上角或使用鍵盤 Tab 顯示返回入口，也可按 Escape 返回編輯。
@@ -39,7 +46,8 @@ app/badges/index.html        工作室頁面
 app/src/badges/
   main.js                   載入、操作與儲存協調
   scene.js                  場景與渲染生命週期
-  models.js / outline.js    徽章幾何與輪廓
+  models.js / outline.js    徽章組裝與輪廓
+  body.js                   平直／弧面本體與平順切換
   relief.js                 圖像分析與淺浮雕幾何
   lighting.js / surfaces.js 金屬與反射環境
   motion.js                 整面牆的配置及慣性

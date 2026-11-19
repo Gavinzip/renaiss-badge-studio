@@ -1,11 +1,12 @@
 import {
-  BufferGeometry, CanvasTexture, DynamicDrawUsage, ExtrudeGeometry, Float32BufferAttribute, Group,
+  BufferGeometry, CanvasTexture, DynamicDrawUsage, Float32BufferAttribute, Group,
   InstancedMesh, LineBasicMaterial, LineSegments, Mesh, MeshBasicMaterial, Points, PointsMaterial, ShapeGeometry,
 } from 'three';
 import { describeArtwork } from './outline.js';
+import { createBadgeBody } from './body.js';
 import { maximumVisibleBadges } from './motion.js';
 import { createBadgeEnamel, createBadgeMetal } from './surfaces.js';
-import { analyzeRelief, createFrontSurface, frontCrown } from './relief.js';
+import { analyzeRelief, createFrontSurface } from './relief.js';
 
 const depth = .076;
 
@@ -14,20 +15,8 @@ export function createBadgeModel(source, artwork) {
   if (!shapes.length) throw new Error(`「${source.name}」的圖案太細，無法產生立體輪廓。`);
 
   const bevel = Math.min(.004, Math.min(width, height) * .02);
-  const bodyGeometry = new ExtrudeGeometry(shapes, {
-    depth, bevelThickness: bevel * .82, bevelSize: bevel, bevelSegments: 4, curveSegments: 4,
-  });
-  bodyGeometry.translate(0, 0, -depth / 2);
-  const positions = bodyGeometry.attributes.position;
-  for (let index = 0; index < positions.count; index++) {
-    const z = positions.getZ(index);
-    const bend = Math.max(0, Math.min(1, z / (depth / 2)));
-    positions.setZ(index, z + bend * frontCrown(positions.getX(index), positions.getY(index), width, height));
-  }
-  bodyGeometry.computeVertexNormals();
-  smoothBevelNormals(bodyGeometry);
-  // All sides share one metal material, so the wall can batch them by artwork.
-  bodyGeometry.clearGroups();
+  const bodySurface = createBadgeBody(shapes, width, height, depth, bevel);
+  const bodyGeometry = bodySurface.geometry;
   const isProtocol = source.builtin === 'protocol';
   const bodyMaterial = createBadgeMetal();
 
@@ -42,6 +31,10 @@ export function createBadgeModel(source, artwork) {
       bodyMaterial.color.set(color);
       bodyMaterial.roughness = roughness;
       face.setAppearance(color, roughness, preserve, reliefEnabled, reliefHeight);
+    },
+    setCurvature(amount) {
+      bodySurface.setCurvature(amount);
+      face.setCurvature(amount);
     },
     draw(matrix, showArtwork) {
       body.setMatrixAt(bodyCount++, matrix);
@@ -64,53 +57,28 @@ export function createBadgeModel(source, artwork) {
   };
 }
 
-function smoothBevelNormals(geometry) {
-  const { position, normal } = geometry.attributes;
-  const vertices = new Map();
-  const quantize = value => Math.round(value * 100000);
-  for (const { start, count, materialIndex } of geometry.groups) {
-    if (materialIndex !== 1) continue;
-    for (let index = start; index < start + count; index++) {
-      // Join duplicate vertices on the same bevel without blending nearby features.
-      const key = [position.getX(index), position.getY(index), position.getZ(index)].map(quantize).join(',');
-      const neighbors = vertices.get(key) ?? [];
-      neighbors.push(index);
-      vertices.set(key, neighbors);
-    }
-  }
-  const original = normal.array.slice();
-  for (const neighbors of vertices.values()) {
-    for (const index of neighbors) {
-      const i = index * 3;
-      let x = 0, y = 0, z = 0;
-      for (const neighbor of neighbors) {
-        const n = neighbor * 3;
-        const cosine = original[i] * original[n] + original[i + 1] * original[n + 1] + original[i + 2] * original[n + 2];
-        if (cosine < .68) continue;
-        x += original[n];
-        y += original[n + 1];
-        z += original[n + 2];
-      }
-      const length = Math.hypot(x, y, z);
-      if (length > 0) normal.setXYZ(index, x / length, y / length, z / length);
-    }
-  }
-}
-
 function createBadgeFace(artwork, shapes, width, height, bevel, isProtocol, bodyMaterial) {
   const analysis = analyzeRelief(artwork.canvas);
   const surface = createFrontSurface(shapes, width, height, depth / 2 + bevel * .82, analysis);
   const enamel = isProtocol ? null : createBadgeEnamel(artwork);
   const mesh = makeInstances(surface.geometry, enamel?.material ?? bodyMaterial);
+  let curvature = 1, heightOffset = 0;
   return {
     mesh,
+    setCurvature(amount) {
+      curvature = amount;
+      surface.setHeight(heightOffset, curvature);
+    },
     setAppearance(color, roughness, preserve, reliefEnabled, reliefHeight) {
       if (enamel) {
         enamel.metal.color.set(color);
         enamel.metal.roughness = roughness;
+        enamel.material.roughness = roughness;
+        enamel.material.clearcoatRoughness = roughness * .8;
         mesh.material = preserve ? enamel.material : enamel.metal;
       }
-      surface.setHeight(reliefEnabled && !isProtocol ? reliefHeight : 0);
+      heightOffset = reliefEnabled && !isProtocol ? reliefHeight : 0;
+      surface.setHeight(heightOffset, curvature);
     },
     dispose() {
       mesh.dispose();

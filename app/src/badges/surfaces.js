@@ -5,7 +5,7 @@ export function createBadgeMetal() {
   return new MeshPhysicalMaterial({
     color: copper, roughness: .2,
     metalness: 1, anisotropy: .18, anisotropyRotation: .33,
-    clearcoat: .08, clearcoatRoughness: .2,
+    clearcoat: 0,
   });
 }
 
@@ -14,7 +14,7 @@ export function createBadgeEnamel(artwork) {
   texture.colorSpace = SRGBColorSpace;
   texture.anisotropy = 4;
   const material = new MeshPhysicalMaterial({
-    map: texture, metalness: .88, roughness: .23, clearcoat: .18, clearcoatRoughness: .22,
+    map: texture, metalness: .88, roughness: .2, clearcoat: .18, clearcoatRoughness: .16,
     envMapIntensity: 1, alphaTest: .33,
   });
   const metal = createBadgeMetal();

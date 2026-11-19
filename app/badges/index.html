@@ -11,7 +11,7 @@
   <body>
     <main class="badge-wall" data-mode="editor" aria-label="徽章工作室">
       <header class="studio-header">
-        <a class="studio-brand" href="/" aria-label="返回 Renaiss 全息展示">Renaiss<span>徽章工作室</span></a>
+        <a class="studio-brand" href="/" aria-label="返回徽章工作室首頁">Renaiss<span>徽章工作室</span></a>
         <div class="studio-header-actions">
           <span id="save-status" class="save-status" role="status">正在載入</span>
           <button id="retry-save" class="text-button" type="button" hidden>重新儲存</button>
@@ -53,6 +53,7 @@
           <label class="toggle-row"><span>保留圖片原色<small>關閉後整枚使用金屬配色</small></span><input id="preserve-artwork" type="checkbox" checked role="switch" /></label>
           <label class="slider-label" for="roughness"><span>表面光澤</span><output id="roughness-value"></output></label>
           <input id="roughness" type="range" min="12" max="45" step="1" value="20" />
+          <label class="toggle-row"><span>弧面造型<small>開啟為微弧面，關閉為平直表面</small></span><input id="curved-surface" type="checkbox" checked role="switch" /></label>
           <label class="toggle-row"><span>淺浮雕圖案<small>依明暗與色塊，讓內部圖案微微凸起</small></span><input id="relief-enabled" type="checkbox" role="switch" /></label>
           <div id="relief-controls" hidden>
             <label class="slider-label" for="relief-height"><span>浮雕高度</span><output id="relief-value"></output></label>

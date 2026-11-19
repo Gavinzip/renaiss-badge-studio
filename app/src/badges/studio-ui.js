@@ -10,6 +10,7 @@ export function createStudioUI({ select, replace, importCollection, restore, cha
     custom: document.querySelector('#custom-metal'),
     preserve: document.querySelector('#preserve-artwork'),
     roughness: document.querySelector('#roughness'),
+    curved: document.querySelector('#curved-surface'),
     relief: document.querySelector('#relief-enabled'),
     reliefHeight: document.querySelector('#relief-height'),
     reliefControls: document.querySelector('#relief-controls'),
@@ -67,6 +68,7 @@ export function createStudioUI({ select, replace, importCollection, restore, cha
     });
     elements.preserve.checked = settings.preserveArtwork;
     elements.roughness.value = Math.round(settings.roughness * 100);
+    elements.curved.checked = settings.curvedSurface;
     elements.relief.checked = settings.reliefEnabled;
     elements.reliefHeight.value = Math.round(settings.reliefHeight * 1000);
     elements.reliefControls.hidden = !settings.reliefEnabled;
@@ -95,6 +97,7 @@ export function createStudioUI({ select, replace, importCollection, restore, cha
   });
   elements.preserve.addEventListener('change', () => changeSetting({ preserveArtwork: elements.preserve.checked }));
   elements.roughness.addEventListener('input', () => changeSetting({ roughness: Number(elements.roughness.value) / 100 }));
+  elements.curved.addEventListener('change', () => changeSetting({ curvedSurface: elements.curved.checked }));
   elements.relief.addEventListener('change', () => changeSetting({ reliefEnabled: elements.relief.checked }));
   elements.reliefHeight.addEventListener('input', () => changeSetting({ reliefHeight: Number(elements.reliefHeight.value) / 1000 }));
   elements.glide.addEventListener('input', () => changeSetting({ glideDuration: Number(elements.glide.value) }));
